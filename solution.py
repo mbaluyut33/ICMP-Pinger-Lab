@@ -4,7 +4,9 @@ import sys
 import struct
 import time
 import select
+import statistics
 import binascii
+
 # Should use stdev
 
 ICMP_ECHO_REQUEST = 8
@@ -50,6 +52,19 @@ def receiveOnePing(mySocket, ID, timeout, destAddr):
         # Fill in start
 
         # Fetch the ICMP header from the IP packet
+        ICMP_Header = recPacket[20:28]
+
+        type, code, checksum, ICMP_ID, sequence = struct.unpack("bbHHh", ICMP_Header)
+
+        print
+        "The header received in the ICMP reply is ", type, code, checksum, ICMP_ID, sequence
+        if ICMP_ID == ID:
+            bytesinDbl = struct.calcsize("d")
+            timeSent = struct.unpack("d", recPacket[28:28 + bytesinDbl])[0]
+            rtt = timeReceived - timeSent
+
+            return rtt
+
 
         # Fill in end
         timeLeft = timeLeft - howLongInSelect
@@ -63,6 +78,7 @@ def sendOnePing(mySocket, destAddr, ID):
     myChecksum = 0
     # Make a dummy header with a 0 checksum
     # struct -- Interpret strings as packed binary data
+
     header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, myChecksum, ID, 1)
     data = struct.pack("d", time.time())
     # Calculate the checksum on the data and the dummy header.
@@ -105,15 +121,25 @@ def ping(host, timeout=1):
     dest = gethostbyname(host)
     print("Pinging " + dest + " using Python:")
     print("")
-    # Calculate vars values and return them
-    #  vars = [str(round(packet_min, 2)), str(round(packet_avg, 2)), str(round(packet_max, 2)),str(round(stdev(stdev_var), 2))]
+
+    packet_array = []
     # Send ping requests to a server separated by approximately one second
     for i in range(0,4):
         delay = doOnePing(dest, timeout)
+        packet_array.append(delay)
         print(delay)
         time.sleep(1)  # one second
-
+    # Calculate vars values and return them
+    packet_min = min(packet_array) *1000 #second to millisecond
+    #error around here around int and str, fix later
+    packet_avg = (sum(packet_array)/len(packet_array)) *1000 #second to millisecond
+    packet_max = max(packet_array) *1000 #second to millisecond
+    stdev_var = statistics.stdev(packet_array) *1000 #second to millisecond
+    vars = [(round(packet_min, 4)), (round(packet_avg, 4)), (round(packet_max, 4)),(round(stdev_var, 4))]
+    for i in range(0,4):
+        print(vars[i])
     return vars
 
 if __name__ == '__main__':
     ping("google.co.il")
+    #ping("no.no.e")
