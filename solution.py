@@ -56,15 +56,11 @@ def receiveOnePing(mySocket, ID, timeout, destAddr):
 
         type, code, checksum, ICMP_ID, sequence = struct.unpack("bbHHh", ICMP_Header)
 
-        print
-        "The header received in the ICMP reply is ", type, code, checksum, ICMP_ID, sequence
         if ICMP_ID == ID:
             bytesinDbl = struct.calcsize("d")
             timeSent = struct.unpack("d", recPacket[28:28 + bytesinDbl])[0]
             rtt = timeReceived - timeSent
-
             return rtt
-
 
         # Fill in end
         timeLeft = timeLeft - howLongInSelect
